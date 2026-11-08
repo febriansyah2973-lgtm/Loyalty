@@ -81,6 +81,63 @@ class AdminUserController extends Controller
     }
 
     /**
+     * Perbarui profil pengguna, ganti password, role, dan penyesuaian poin
+     */
+    public function update(Request $request, User $user): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email,'.$user->id],
+            'password' => ['nullable', 'string', 'min:8'],
+            'role_id' => ['required', 'exists:roles,id'],
+            'points' => ['nullable', 'integer', 'min:0'],
+            'lifetime_points' => ['nullable', 'integer', 'min:0'],
+            'tier' => ['nullable', 'in:Reguler,Silver,Gold'],
+        ], [
+            'name.required' => 'Nama pengguna wajib diisi.',
+            'email.required' => 'Alamat email wajib diisi.',
+            'email.unique' => 'Email ini sudah digunakan oleh akun lain.',
+            'password.min' => 'Password minimal 8 karakter.',
+            'role_id.required' => 'Pilih peran / role pengguna.',
+        ]);
+
+        // Mencegah admin mendegradasi akunnya sendiri jika dia admin yang sedang login
+        if ($user->id === auth()->id() && (int) $validated['role_id'] !== (int) $user->role_id) {
+            return back()->with('error', 'Anda tidak dapat mengubah role akun Anda sendiri saat ini.');
+        }
+
+        if ($this->isProtectedSuperAdmin($user) && Role::find($validated['role_id'])?->name !== 'admin') {
+            return back()->with('error', 'Role Super Administrator tidak dapat diturunkan.');
+        }
+
+        $user->name = $validated['name'];
+        $user->email = $validated['email'];
+        $user->role_id = $validated['role_id'];
+
+        if (!empty($validated['password'])) {
+            $user->password = Hash::make($validated['password']);
+        }
+
+        if (array_key_exists('points', $validated) && $validated['points'] !== null) {
+            $user->points = (int) $validated['points'];
+        }
+
+        if (array_key_exists('lifetime_points', $validated) && $validated['lifetime_points'] !== null) {
+            $user->lifetime_points = (int) $validated['lifetime_points'];
+        }
+
+        if (!empty($validated['tier'])) {
+            $user->tier = $validated['tier'];
+        } else {
+            $user->updateTier();
+        }
+
+        $user->save();
+
+        return back()->with('success', "Data pengguna \"{$user->name}\" berhasil diperbarui.");
+    }
+
+    /**
      * Perbarui role pengguna
      */
     public function updateRole(Request $request, User $user): RedirectResponse

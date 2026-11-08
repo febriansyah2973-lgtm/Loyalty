@@ -10,8 +10,15 @@
                 <h2 style="font-family:'Cormorant Garamond',serif;font-size:2.8rem;font-weight:300;color:#1C1916;font-style:italic;line-height:1.1;">Claim Purchase Points</h2>
                 <div class="gold-divider" style="margin:14px auto;"></div>
                 <p style="font-size:11px;color:#A8A29E;margin-top:8px;">Submit your boutique or online store receipt to earn exclusive points.</p>
-                <div class="mt-4 p-3 bg-amber-50 border border-amber-200 text-amber-900 text-xs tracking-wide">
-                    <span class="font-bold">✦ Skema Poin:</span> Setiap total belanja <strong>Rp 1.000.000</strong> mendapatkan <strong>10 Poin</strong> (Kelipatan Rp 100.000 = 1 Poin).
+                <div class="mt-4 p-3 bg-amber-50 border border-amber-200 text-amber-900 text-xs tracking-wide text-left">
+                    <p class="font-bold mb-1">✦ Formula Perolehan Poin:</p>
+                    <p>Formula Dasar: (Total Belanja / 100.000) &times; 10 Poin</p>
+                    <p class="mt-1 text-[11px] text-amber-800">
+                        Multiplier Tier: <strong>Reguler (1.0x)</strong> &bull; <strong>Silver (1.5x)</strong> &bull; <strong>Gold (2.0x)</strong>.
+                        @auth
+                            Status Anda saat ini: <strong class="underline">{{ Auth::user()->tier }} ({{ Auth::user()->getTierMultiplier() }}x)</strong>.
+                        @endauth
+                    </p>
                 </div>
             </div>
 

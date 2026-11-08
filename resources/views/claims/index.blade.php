@@ -94,12 +94,12 @@
                             <!-- Customer Info -->
                             <td class="px-6 py-6">
                                 <div class="flex items-center">
-                                    @if($claim->user->tier !== 'Classic')
+                                    @if(!in_array($claim->user->tier, ['Reguler', 'Classic']))
                                         <span class="w-2 h-2 rounded-full bg-yellow-500 mr-3 animate-pulse" title="{{ $claim->user->tier }} Member"></span>
                                     @endif
                                     <div>
                                         <p class="text-xs font-bold uppercase tracking-widest">{{ $claim->user->name }}</p>
-                                        <p class="text-[9px] text-gray-400 uppercase tracking-tighter">{{ $claim->user->tier }} Member ({{ number_format($claim->user->points) }} Pts)</p>
+                                        <p class="text-[9px] text-gray-400 uppercase tracking-tighter">{{ $claim->user->tier }} Member ({{ number_format($claim->user->points) }} Pts &bull; LT: {{ number_format($claim->user->lifetime_points) }} Pts)</p>
                                         <span class="text-[8px] text-stone-400 font-mono">{{ $claim->user->email }}</span>
                                     </div>
                                 </div>

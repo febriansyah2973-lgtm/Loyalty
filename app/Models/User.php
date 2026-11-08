@@ -15,12 +15,17 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
+    public const TIER_REGULER = 'Reguler';
+    public const TIER_SILVER = 'Silver';
+    public const TIER_GOLD = 'Gold';
+
     protected $fillable = [
         'name',
         'email',
         'password',
         'role_id',
         'points',
+        'lifetime_points',
         'tier',
         'points_expire_at',
         'birth_date',
@@ -31,6 +36,8 @@ class User extends Authenticatable
 
     protected $casts = [
         'birth_date' => 'date',
+        'points' => 'integer',
+        'lifetime_points' => 'integer',
         'points_expire_at' => 'date',
         'cashback_balance' => 'decimal:2',
         'birthday_rewarded_at' => 'datetime',
@@ -49,7 +56,11 @@ class User extends Authenticatable
             }
 
             if (blank($user->tier)) {
-                $user->tier = 'Classic';
+                $user->tier = self::TIER_REGULER;
+            }
+
+            if ($user->lifetime_points === null) {
+                $user->lifetime_points = 0;
             }
 
             if (blank($user->points_expire_at)) {
@@ -143,32 +154,67 @@ class User extends Authenticatable
     public function getDiscountPercentageAttribute()
     {
         return match($this->tier) {
-            'Gold' => 15,
-            'Silver' => 5,
+            self::TIER_GOLD => 15,
+            self::TIER_SILVER => 5,
             default => 0,
         };
     }
 
     /**
-     * Memperbarui kolom level/tier pelanggan di database secara permanen
-     * sesuai Activity Diagram "Update Level/Tier Pelanggan".
+     * Multiplier Logic berdasarkan Tier:
+     * Reguler -> 1.0
+     * Silver  -> 1.5
+     * Gold    -> 2.0
+     */
+    public function getTierMultiplier(): float
+    {
+        return match ($this->tier) {
+            self::TIER_GOLD => 2.0,
+            self::TIER_SILVER => 1.5,
+            default => 1.0, // Reguler
+        };
+    }
+
+    /**
+     * Point Calculation Engine:
+     * Base Formula: (Transaction Amount / 100,000) * 10
+     * Multiplier: Match on Tier (1.0, 1.5, 2.0)
+     */
+    public function calculateEarnedPoints(float|int $amount): int
+    {
+        $baseFormula = ($amount / 100000) * 10;
+        $multiplier = $this->getTierMultiplier();
+
+        return (int) floor($baseFormula * $multiplier);
+    }
+
+    /**
+     * Tier Calculation Logic (Thresholds):
+     * Dijalankan setiap kali user memperoleh poin baru berdasarkan lifetime_points:
+     * >= 1000           -> Gold
+     * >= 500 AND <= 999 -> Silver
+     * >= 0 AND <= 499   -> Reguler
      */
     public function updateTier(): string
     {
-        $oldTier = $this->tier ?? 'Classic';
-        $newTier = 'Classic';
+        $oldTier = $this->tier ?? self::TIER_REGULER;
+        $newTier = self::TIER_REGULER;
 
-        if ($this->points >= 5000) {
-            $newTier = 'Gold';
-        } elseif ($this->points >= 1000) {
-            $newTier = 'Silver';
+        $lp = (int) ($this->lifetime_points ?? 0);
+
+        if ($lp >= 1000) {
+            $newTier = self::TIER_GOLD;
+        } elseif ($lp >= 500) {
+            $newTier = self::TIER_SILVER;
+        } else {
+            $newTier = self::TIER_REGULER;
         }
 
         if ($oldTier !== $newTier || blank($this->tier)) {
             $this->forceFill(['tier' => $newTier])->save();
 
             // Notifikasi jika naik tier
-            if ($oldTier !== $newTier && in_array($newTier, ['Silver', 'Gold'])) {
+            if ($oldTier !== $newTier && in_array($newTier, [self::TIER_SILVER, self::TIER_GOLD], true)) {
                 $this->notify(new \App\Notifications\LoyaltyActivityNotification(
                     'Membership Tier Upgrade',
                     "Selamat! Status keanggotaan Anda telah naik ke level {$newTier} Class dengan hak istimewa diskon {$this->discount_percentage}%.",
@@ -183,6 +229,9 @@ class User extends Authenticatable
 
     /**
      * Menambahkan poin dan mencatat mutasi ke tabel Point Ledger.
+     * Database Injection: Update BOTH columns:
+     * points = points + calculated_points
+     * lifetime_points = lifetime_points + calculated_points
      */
     public function addPoints(int $amount, string $type, string $description, mixed $reference = null): PointLedger
     {
@@ -191,6 +240,8 @@ class User extends Authenticatable
             $balanceAfter = $balanceBefore + $amount;
 
             $this->points = $balanceAfter;
+            $this->lifetime_points = (int) ($this->lifetime_points ?? 0) + $amount;
+
             if (! $this->points_expire_at || $this->points_expire_at->isPast()) {
                 $this->points_expire_at = now()->endOfYear()->toDateString();
             }
@@ -207,6 +258,7 @@ class User extends Authenticatable
                 'description' => $description,
             ]);
 
+            // Jalankan pengecekan tier setiap kali user memperoleh poin baru
             $this->updateTier();
 
             return $ledger;
@@ -214,7 +266,10 @@ class User extends Authenticatable
     }
 
     /**
-     * Memotong poin dan mencatat mutasi keluar ke tabel Point Ledger.
+     * Redemption Engine (Point Deduction):
+     * Memotong saldo poin belanja aktif (points) dan mencatat mutasi ke tabel Point Ledger.
+     * PENTING: JANGAN PERNAH menyentuh lifetime_points agar tier member tetap aman
+     * meskipun saldo poin aktifnya turun menjadi 0.
      */
     public function deductPoints(int $amount, string $type, string $description, mixed $reference = null): bool
     {
@@ -227,6 +282,7 @@ class User extends Authenticatable
             $balanceAfter = $balanceBefore - $amount;
 
             $this->points = $balanceAfter;
+            // DO NOT touch lifetime_points!
             $this->save();
 
             PointLedger::create([
@@ -240,7 +296,7 @@ class User extends Authenticatable
                 'description' => $description,
             ]);
 
-            $this->updateTier();
+            // DO NOT touch tier on point deduction
         });
 
         return true;

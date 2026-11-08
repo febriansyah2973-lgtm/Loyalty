@@ -17,6 +17,7 @@
 
         .tier-badge-gold     { background: linear-gradient(135deg, #B8964E, #E8C97A, #B8964E); }
         .tier-badge-silver   { background: linear-gradient(135deg, #9CA3AF, #D1D5DB, #9CA3AF); }
+        .tier-badge-reguler  { background: linear-gradient(135deg, #D6D3D1, #E7E5E4, #D6D3D1); }
         .tier-badge-classic  { background: linear-gradient(135deg, #D6D3D1, #E7E5E4, #D6D3D1); }
 
         .stat-card {
@@ -51,11 +52,11 @@
             @endif
 
             {{-- Tier Banner --}}
-            @if(Auth::user()->tier !== 'Classic')
+            @if(!in_array(Auth::user()->tier, ['Reguler', 'Classic']))
             <div class="mb-10 overflow-hidden border-y border-amber-100 bg-gradient-to-r from-amber-50 to-white py-2.5">
                 <div class="animate-marquee whitespace-nowrap">
                     <span class="text-[9px] tracking-[0.5em] uppercase font-semibold text-amber-700">
-                        ✦ &nbsp; {{ Auth::user()->tier }} Privilege — {{ Auth::user()->discount_percentage }}% exclusive discount active on your next purchase &nbsp; ✦ &nbsp; Khanaan Private Member &nbsp; ✦ &nbsp; {{ Auth::user()->tier }} Privilege — {{ Auth::user()->discount_percentage }}% exclusive discount active
+                        ✦ &nbsp; {{ Auth::user()->tier }} Privilege — {{ Auth::user()->discount_percentage }}% exclusive discount active &bull; {{ number_format(Auth::user()->getTierMultiplier(), 1) }}x Point Earning Multiplier &nbsp; ✦ &nbsp; Khanaan Private Member &nbsp; ✦ &nbsp; {{ Auth::user()->tier }} Privilege — {{ Auth::user()->discount_percentage }}% exclusive discount active
                     </span>
                 </div>
             </div>
@@ -78,14 +79,19 @@
                  style="background: linear-gradient(135deg, #1C1916 0%, #2D2820 50%, #1C1916 100%); border: 1px solid rgba(184,150,78,0.3);">
                 <div class="p-10 md:p-14 flex flex-col md:flex-row justify-between items-center gap-8">
                     <div class="text-center md:text-left">
-                        <p class="text-[9px] tracking-[0.5em] text-amber-400/60 uppercase mb-4 font-semibold">Available Points</p>
+                        <p class="text-[9px] tracking-[0.5em] text-amber-400/60 uppercase mb-4 font-semibold">Available Points (Spendable)</p>
                         <div class="flex items-baseline gap-3 justify-center md:justify-start">
                             <span class="font-display text-8xl font-light text-white" style="font-family:'Cormorant Garamond',serif;">{{ number_format(Auth::user()->points) }}</span>
                             <span class="text-[10px] tracking-[0.4em] text-amber-400/50 uppercase">pts</span>
                         </div>
-                        <p class="text-[9px] text-amber-400/70 tracking-widest mt-2 uppercase">
-                            Kedaluwarsa Poin: {{ Auth::user()->points_expire_at ? Auth::user()->points_expire_at->format('d M Y') : '31 Des ' . now()->format('Y') }}
-                        </p>
+                        <div class="mt-3 flex flex-wrap items-center gap-4 justify-center md:justify-start">
+                            <span class="text-[10px] text-amber-400/80 tracking-wider uppercase bg-white/5 border border-white/10 px-3 py-1">
+                                Lifetime Points: <strong>{{ number_format(Auth::user()->lifetime_points) }} pts</strong>
+                            </span>
+                            <span class="text-[9px] text-white/50 tracking-widest uppercase">
+                                Kedaluwarsa: {{ Auth::user()->points_expire_at ? Auth::user()->points_expire_at->format('d M Y') : '31 Des ' . now()->format('Y') }}
+                            </span>
+                        </div>
                     </div>
                     
                     <div class="w-px h-20 bg-white/10 hidden md:block"></div>
@@ -93,12 +99,24 @@
                     <div class="text-center md:text-right">
                         <p class="text-[9px] tracking-[0.5em] text-amber-400/60 uppercase mb-3 font-semibold">Membership Level</p>
                         <div class="inline-flex items-center gap-2 mb-3">
-                            <span class="w-2.5 h-2.5 rounded-full {{ Auth::user()->tier == 'Gold' ? 'tier-badge-gold' : (Auth::user()->tier == 'Silver' ? 'tier-badge-silver' : 'tier-badge-classic') }}"></span>
+                            <span class="w-2.5 h-2.5 rounded-full {{ Auth::user()->tier == 'Gold' ? 'tier-badge-gold' : (Auth::user()->tier == 'Silver' ? 'tier-badge-silver' : 'tier-badge-reguler') }}"></span>
                             <span class="font-display text-2xl font-light text-white italic" style="font-family:'Cormorant Garamond',serif;">{{ Auth::user()->tier }} Class</span>
                         </div>
-                        @if(Auth::user()->discount_percentage > 0)
-                        <p class="text-[9px] text-amber-400 tracking-[0.3em] uppercase font-semibold mb-3">{{ Auth::user()->discount_percentage }}% Discount Active</p>
-                        @endif
+                        <div class="text-[9px] text-amber-400/90 tracking-wider uppercase mb-2 font-medium">
+                            Multiplier: <strong>{{ number_format(Auth::user()->getTierMultiplier(), 1) }}x Poin</strong>
+                            @if(Auth::user()->discount_percentage > 0)
+                                &bull; {{ Auth::user()->discount_percentage }}% Diskon
+                            @endif
+                        </div>
+                        <p class="text-[9px] text-stone-300/80 tracking-wide mb-3">
+                            @if(Auth::user()->lifetime_points < 500)
+                                {{ 500 - Auth::user()->lifetime_points }} pts lagi menuju Silver (500 pts)
+                            @elseif(Auth::user()->lifetime_points < 1000)
+                                {{ 1000 - Auth::user()->lifetime_points }} pts lagi menuju Gold (1.000 pts)
+                            @else
+                                Level Kehormatan Tertinggi (Tier Gold)
+                            @endif
+                        </p>
                         <p class="text-[9px] text-white/40 tracking-[0.4em] uppercase border border-white/10 px-5 py-2 inline-block">
                             KHN-{{ str_pad(Auth::id(), 4, '0', STR_PAD_LEFT) }}
                         </p>
@@ -144,17 +162,25 @@
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     @forelse(Auth::user()->vouchers()->whereNull('used_at')->where('expires_at', '>', now())->with('reward')->latest()->get() as $voucher)
-                    <div class="card-hover bg-white border border-stone-200 p-6 flex justify-between items-center shadow-sm">
+                    <div class="card-hover bg-white border border-stone-200 p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm">
                         <div>
-                            <p class="text-[9px] tracking-[0.3em] text-amber-600 uppercase font-semibold mb-1">{{ $voucher->title }}</p>
-                            <p class="font-display text-2xl text-stone-900 tracking-widest font-bold" style="font-family:'Cormorant Garamond',serif;">{{ $voucher->code }}</p>
+                            <div class="flex items-center gap-2 mb-1.5">
+                                <span class="inline-block text-[8px] uppercase tracking-wider font-bold px-2 py-0.5 border {{ $voucher->categoryBadgeClass() }}">
+                                    {{ $voucher->categoryLabel() }}
+                                </span>
+                            </div>
+                            <p class="text-xs font-bold text-stone-900 mb-1">{{ $voucher->title }}</p>
+                            <p class="font-display text-2xl text-stone-900 tracking-widest font-bold font-mono" style="font-family:'Cormorant Garamond',serif;">{{ $voucher->code }}</p>
                             @if($voucher->discount_amount)
                                 <p class="text-xs text-stone-600 font-semibold mt-1">Diskon: Rp {{ number_format($voucher->discount_amount, 0, ',', '.') }}</p>
+                            @endif
+                            @if($voucher->notes)
+                                <p class="text-[10px] text-stone-500 mt-1 italic">{{ $voucher->notes }}</p>
                             @endif
                             <p class="text-[10px] text-red-500 mt-2 tracking-wide font-medium">Berlaku s/d {{ $voucher->expires_at->format('d M Y') }} ({{ $voucher->expires_at->diffForHumans() }})</p>
                         </div>
                         <button onclick="navigator.clipboard.writeText('{{ $voucher->code }}'); this.textContent='Copied!'; setTimeout(()=>this.textContent='Copy',2000)"
-                            class="bg-black text-white hover:bg-amber-600 text-[9px] px-5 py-2.5 uppercase tracking-widest font-semibold transition-all duration-200 shadow">
+                            class="bg-black text-white hover:bg-amber-600 text-[9px] px-5 py-2.5 uppercase tracking-widest font-semibold transition-all duration-200 shadow whitespace-nowrap">
                             Copy
                         </button>
                     </div>
@@ -172,42 +198,169 @@
                     <div class="absolute top-0 left-0 w-1 h-full bg-amber-400 group-hover:w-2 transition-all duration-300"></div>
                     <p class="text-[9px] tracking-[0.4em] uppercase text-amber-600 font-semibold mb-3 pl-4">Step 1</p>
                     <h3 class="font-display text-2xl text-stone-800 italic pl-4" style="font-family:'Cormorant Garamond',serif;">Register Purchase</h3>
-                    <p class="text-xs text-stone-400 mt-2 leading-relaxed pl-4">Submit your receipt to earn exclusive loyalty points (Rp 1.000.000 = 10 Pts).</p>
+                    <p class="text-xs text-stone-400 mt-2 leading-relaxed pl-4">Submit your receipt to earn exclusive loyalty points ((Rp 100.000 = 10 Pts) &times; {{ number_format(Auth::user()->getTierMultiplier(), 1) }}x Multiplier).</p>
                     <p class="mt-4 pl-4 text-[9px] tracking-[0.3em] uppercase font-semibold text-amber-600 group-hover:underline">Submit Claim →</p>
                 </a>
                 <a href="#katalog-hadiah" class="card-hover group block bg-white border border-stone-100 p-8 relative overflow-hidden">
                     <div class="absolute top-0 left-0 w-1 h-full bg-stone-300 group-hover:bg-amber-400 group-hover:w-2 transition-all duration-300"></div>
                     <p class="text-[9px] tracking-[0.4em] uppercase text-stone-400 font-semibold mb-3 pl-4">Step 2</p>
-                    <h3 class="font-display text-2xl text-stone-800 italic pl-4" style="font-family:'Cormorant Garamond',serif;">Curated Rewards</h3>
-                    <p class="text-xs text-stone-400 mt-2 leading-relaxed pl-4">Tukarkan poin Anda dengan voucher diskon 200rb, 500rb, hingga 1jt.</p>
+                    <h3 class="font-display text-2xl text-stone-800 italic pl-4" style="font-family:'Cormorant Garamond',serif;">Curated Privileges</h3>
+                    <p class="text-xs text-stone-400 mt-2 leading-relaxed pl-4">Tukarkan poin Anda dengan layanan vermak gratis, undangan privat VIP, hampers mewah, dan produk eksklusif.</p>
                     <p class="mt-4 pl-4 text-[9px] tracking-[0.3em] uppercase font-semibold text-stone-400 group-hover:text-amber-600 group-hover:underline transition">Browse Collection →</p>
                 </a>
+            </div>
+
+            {{-- MEMBERSHIP TIER PRIVILEGE GUIDE --}}
+            <div class="mb-12 bg-white border border-stone-200 p-8 shadow-sm">
+                <div class="mb-6 border-b border-stone-100 pb-4">
+                    <p class="text-[9px] tracking-[0.4em] uppercase text-amber-600 font-semibold mb-1">Membership Privileges</p>
+                    <h3 class="font-display text-2xl text-stone-900 italic" style="font-family:'Cormorant Garamond',serif;">Panduan Hak Istimewa Member Khanaan</h3>
+                    <p class="text-xs text-stone-400 mt-1">Struktur level keanggotaan berdasarkan akumulasi total poin (Lifetime Points)</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- REGULER TIER -->
+                    <div class="p-6 border {{ Auth::user()->tier === 'Reguler' ? 'border-amber-400 bg-amber-50/20 shadow-md' : 'border-stone-100 bg-[#FAFAFA]' }} flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-[9px] uppercase tracking-widest font-bold px-2 py-0.5 bg-stone-200 text-stone-700">0 - 499 Pts</span>
+                                @if(Auth::user()->tier === 'Reguler')
+                                    <span class="text-[8px] bg-amber-400 text-black px-1.5 py-0.5 font-extrabold uppercase">Tier Anda</span>
+                                @endif
+                            </div>
+                            <h4 class="font-display text-xl text-stone-900 italic font-semibold mb-3" style="font-family:'Cormorant Garamond',serif;">Reguler (Classic)</h4>
+                            <ul class="text-xs text-stone-600 space-y-2 leading-relaxed">
+                                <li class="flex items-start gap-2">
+                                    <span class="text-amber-600 font-bold">✓</span>
+                                    <span><strong>Free Charge:</strong> Gratis layanan custom / vermak khusus untuk barang pada personal list setiap transaksi.</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <span class="text-amber-600 font-bold">✓</span>
+                                    <span><strong>Base Earning:</strong> 1.0x kelipatan poin (Rp 100.000 = 10 Pts).</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- SILVER TIER -->
+                    <div class="p-6 border {{ Auth::user()->tier === 'Silver' ? 'border-amber-400 bg-amber-50/20 shadow-md' : 'border-stone-100 bg-[#FAFAFA]' }} flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-[9px] uppercase tracking-widest font-bold px-2 py-0.5 bg-gray-200 text-gray-800">500 - 999 Pts</span>
+                                @if(Auth::user()->tier === 'Silver')
+                                    <span class="text-[8px] bg-amber-400 text-black px-1.5 py-0.5 font-extrabold uppercase">Tier Anda</span>
+                                @endif
+                            </div>
+                            <h4 class="font-display text-xl text-stone-900 italic font-semibold mb-3" style="font-family:'Cormorant Garamond',serif;">Silver Class</h4>
+                            <ul class="text-xs text-stone-600 space-y-2 leading-relaxed">
+                                <li class="flex items-start gap-2">
+                                    <span class="text-amber-600 font-bold">✓</span>
+                                    <span>Seluruh benefit Member Reguler (Free Vermak).</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <span class="text-amber-600 font-bold">✓</span>
+                                    <span><strong>Private Invitation:</strong> Undangan privat ke acara eksklusif (runway & trunk show) Khanaan.</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <span class="text-amber-600 font-bold">✓</span>
+                                    <span><strong>Privilege Discount:</strong> Akses diskon khusus private sale yang tidak dibuka untuk umum.</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <span class="text-amber-600 font-bold">✓</span>
+                                    <span><strong>Multiplier:</strong> 1.5x kelipatan poin setiap belanja.</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- GOLD TIER -->
+                    <div class="p-6 border {{ Auth::user()->tier === 'Gold' ? 'border-amber-400 bg-amber-50/30 shadow-md' : 'border-stone-100 bg-[#FAFAFA]' }} flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-[9px] uppercase tracking-widest font-bold px-2 py-0.5 bg-amber-200 text-amber-900">&ge; 1.000 Pts</span>
+                                @if(Auth::user()->tier === 'Gold')
+                                    <span class="text-[8px] bg-amber-400 text-black px-1.5 py-0.5 font-extrabold uppercase">Tier Anda</span>
+                                @endif
+                            </div>
+                            <h4 class="font-display text-xl text-amber-900 italic font-semibold mb-3" style="font-family:'Cormorant Garamond',serif;">Gold Class (VIP)</h4>
+                            <ul class="text-xs text-stone-600 space-y-2 leading-relaxed">
+                                <li class="flex items-start gap-2">
+                                    <span class="text-amber-600 font-bold">✓</span>
+                                    <span>Seluruh benefit Member Silver & Reguler.</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <span class="text-amber-600 font-bold">✓</span>
+                                    <span><strong>High-Rate Accumulation:</strong> 2.0x kelipatan poin perolehan belanja terbesar.</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <span class="text-amber-600 font-bold">✓</span>
+                                    <span><strong>Exclusive Hampers & Gift:</strong> Bingkisan hampers mewah saat hari raya dan hadiah spesial.</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <span class="text-amber-600 font-bold">✓</span>
+                                    <span><strong>Redeem Point (Akses Penuh):</strong> Hak penuh menukarkan poin dengan produk adibusana eksklusif Khanaan.</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {{-- Reward Catalogue --}}
             <div id="katalog-hadiah" class="mb-12">
                 <div class="text-center mb-10">
-                    <p class="text-[9px] tracking-[0.5em] uppercase text-amber-600 font-semibold mb-2">Rewards</p>
+                    <p class="text-[9px] tracking-[0.5em] uppercase text-amber-600 font-semibold mb-2">Privilege & Rewards</p>
                     <h2 class="font-display text-4xl font-light text-stone-900 italic" style="font-family:'Cormorant Garamond',serif;">Redeemable Collection</h2>
+                    <p class="text-xs text-stone-400 mt-2 max-w-xl mx-auto">Tukarkan saldo poin aktif Anda dengan layanan custom, tiket undangan privat, hampers hari raya, dan produk adibusana eksklusif.</p>
                     <div class="gold-divider mx-auto mt-3"></div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    @forelse(\App\Models\Reward::all() as $reward)
-                    <div class="card-hover group bg-white border border-stone-100 overflow-hidden flex flex-col justify-between">
-                        <div class="p-8 text-center bg-stone-50/50 border-b border-stone-100">
-                            <span class="inline-block px-3 py-1 bg-black text-amber-400 text-[10px] tracking-widest uppercase font-bold mb-4">
-                                {{ number_format($reward->points_required) }} Poin
-                            </span>
-                            <h4 class="font-display text-2xl text-stone-900 italic mb-2" style="font-family:'Cormorant Garamond',serif;">{{ $reward->title }}</h4>
-                            <p class="text-xs text-stone-500 leading-relaxed">{{ $reward->description }}</p>
+                    @forelse(\App\Models\Reward::orderBy('points_required')->get() as $reward)
+                    @php
+                        $isTierEligible = ($reward->tier_required === 'Gold' && Auth::user()->tier === 'Gold') 
+                            || ($reward->tier_required === 'Silver' && in_array(Auth::user()->tier, ['Silver', 'Gold'])) 
+                            || ($reward->tier_required === 'Reguler');
+                        $hasEnoughPoints = Auth::user()->points >= $reward->points_required;
+                    @endphp
+                    <div class="card-hover group bg-white border border-stone-200 overflow-hidden flex flex-col justify-between shadow-sm">
+                        <div class="p-8 text-center bg-stone-50/50 border-b border-stone-100 flex-1 flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center justify-between mb-4">
+                                    <span class="inline-block text-[8px] uppercase tracking-wider font-bold px-2 py-0.5 border {{ $reward->categoryBadgeClass() }}">
+                                        {{ $reward->categoryLabel() }}
+                                    </span>
+                                    <span class="text-[9px] uppercase tracking-wider font-bold {{ $reward->tier_required === 'Gold' ? 'text-amber-700' : ($reward->tier_required === 'Silver' ? 'text-stone-600' : 'text-stone-400') }}">
+                                        Tier {{ $reward->tier_required }}+
+                                    </span>
+                                </div>
+                                <span class="inline-block px-3 py-1 bg-black text-amber-400 text-[10px] tracking-widest uppercase font-bold mb-4">
+                                    {{ number_format($reward->points_required) }} Poin
+                                </span>
+                                <h4 class="font-display text-xl text-stone-900 italic mb-2 font-semibold" style="font-family:'Cormorant Garamond',serif;">{{ $reward->title }}</h4>
+                                <p class="text-xs text-stone-500 leading-relaxed">{{ $reward->description }}</p>
+                            </div>
+
+                            @if($reward->stock <= 5 && $reward->stock > 0)
+                                <p class="text-[9px] text-amber-600 font-bold tracking-wider uppercase mt-4">Sisa Kuota: {{ $reward->stock }}</p>
+                            @endif
                         </div>
                         <div class="p-6 bg-white">
-                            <form action="{{ route('rewards.redeem', $reward->id) }}" method="POST">
-                                @csrf
-                                <button class="w-full bg-black text-white text-[9px] py-3 uppercase tracking-[0.3em] font-bold hover:bg-amber-600 transition-colors duration-200">
-                                    Tukar Poin Sekarang
+                            @if(!$isTierEligible)
+                                <button disabled class="w-full bg-stone-100 text-stone-400 text-[9px] py-3 uppercase tracking-[0.2em] font-bold cursor-not-allowed border border-stone-200">
+                                    Khusus Member {{ $reward->tier_required }}
                                 </button>
-                            </form>
+                            @elseif(!$hasEnoughPoints)
+                                <button disabled class="w-full bg-stone-100 text-stone-400 text-[9px] py-3 uppercase tracking-[0.2em] font-bold cursor-not-allowed border border-stone-200">
+                                    Poin Kurang ({{ number_format($reward->points_required - Auth::user()->points) }} Pts Lagi)
+                                </button>
+                            @else
+                                <form action="{{ route('rewards.redeem', $reward->id) }}" method="POST">
+                                    @csrf
+                                    <button class="w-full bg-black text-white text-[9px] py-3 uppercase tracking-[0.3em] font-bold hover:bg-amber-600 transition-colors duration-200 shadow">
+                                        Klaim / Tukar Sekarang
+                                    </button>
+                                </form>
+                            @endif
                         </div>
                     </div>
                     @empty

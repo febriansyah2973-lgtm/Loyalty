@@ -78,6 +78,9 @@
                             ${data.vouchers.map(v => `
                                 <div id="voucher-card-${v.id}" class="border border-stone-200 p-3 bg-stone-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                                     <div>
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <span class="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 border ${v.category_badge}">${v.category_label}</span>
+                                        </div>
                                         <p class="text-xs font-bold text-black uppercase tracking-wider">${v.title}</p>
                                         <p class="font-mono text-xs text-amber-700 font-bold tracking-widest mt-0.5">${v.code}</p>
                                         ${v.discount_amount > 0 ? `<p class="text-[10px] text-green-600 font-semibold">Potongan: Rp ${Number(v.discount_amount).toLocaleString('id-ID')}</p>` : ''}

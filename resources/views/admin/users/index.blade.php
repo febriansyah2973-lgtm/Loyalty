@@ -1,6 +1,22 @@
 <x-app-layout>
     <div class="py-12 bg-[#FCFCFC] min-h-screen">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" x-data="{ showCreateModal: false }">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" x-data="{ 
+            showCreateModal: false,
+            showEditModal: false,
+            editUser: {
+                id: null,
+                name: '',
+                email: '',
+                role_id: '',
+                points: 0,
+                lifetime_points: 0,
+                tier: 'Reguler'
+            },
+            openEdit(u) {
+                this.editUser = { ...u };
+                this.showEditModal = true;
+            }
+        }">
             
             <!-- HEADER -->
             <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6">
@@ -113,7 +129,7 @@
 
                         <div>
                             <label class="block text-[10px] uppercase tracking-wider text-stone-500 font-bold mb-2">Password Awal</label>
-                            <input type="password" name="password" required minlength="12" placeholder="Minimal 12 karakter" 
+                            <input type="password" name="password" required minlength="8" placeholder="Minimal 8 karakter" 
                                    class="w-full bg-[#FAFAFA] border border-stone-200 px-4 py-2.5 text-xs text-black focus:outline-none focus:border-black focus:ring-0">
                         </div>
 
@@ -135,6 +151,96 @@
                         </button>
                         <button type="submit" class="bg-black text-white text-[10px] uppercase tracking-widest font-bold px-8 py-2.5 hover:bg-amber-600 transition shadow">
                             Simpan & Terbitkan Akun
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- MODAL EDIT PENGGUNA & GANTI PASSWORD (TOGGLEABLE) -->
+            <div x-show="showEditModal" 
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 -translate-y-4"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 class="mb-12 bg-white border-2 border-amber-400 shadow-2xl p-8"
+                 style="display: none;">
+                <div class="flex justify-between items-center pb-4 mb-6 border-b border-stone-100">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-amber-500 font-bold">✦</span>
+                            <h3 class="khanaan-font-serif text-2xl text-black">Edit Data Pengguna & Ganti Password</h3>
+                        </div>
+                        <p class="text-xs text-stone-400 mt-1">Perbarui profil pengguna, ganti password akun, ubah role, dan kelola saldo poin</p>
+                    </div>
+                    <button @click="showEditModal = false" class="text-stone-400 hover:text-black text-xl font-bold px-2">&times;</button>
+                </div>
+
+                <form method="POST" :action="'{{ url('admin/users') }}/' + editUser.id">
+                    @csrf
+                    @method('PUT')
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <div>
+                            <label class="block text-[10px] uppercase tracking-wider text-stone-500 font-bold mb-2">Nama Lengkap <span class="text-red-500">*</span></label>
+                            <input type="text" name="name" x-model="editUser.name" required
+                                   class="w-full bg-[#FAFAFA] border border-stone-200 px-4 py-2.5 text-xs text-black focus:outline-none focus:border-black focus:ring-0">
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] uppercase tracking-wider text-stone-500 font-bold mb-2">Email Address <span class="text-red-500">*</span></label>
+                            <input type="email" name="email" x-model="editUser.email" required
+                                   class="w-full bg-[#FAFAFA] border border-stone-200 px-4 py-2.5 text-xs text-black focus:outline-none focus:border-black focus:ring-0">
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] uppercase tracking-wider text-stone-500 font-bold mb-2">
+                                Ganti Password Baru
+                                <span class="text-[9px] text-amber-600 font-normal lowercase">(kosongkan jika tidak diubah)</span>
+                            </label>
+                            <input type="password" name="password" minlength="8" placeholder="Ketik password baru (min 8 char)" 
+                                   class="w-full bg-[#FAFAFA] border border-amber-200 px-4 py-2.5 text-xs text-black focus:outline-none focus:border-black focus:ring-0">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 pt-4 border-t border-stone-100">
+                        <div>
+                            <label class="block text-[10px] uppercase tracking-wider text-stone-500 font-bold mb-2">Peran (Role) <span class="text-red-500">*</span></label>
+                            <select name="role_id" x-model="editUser.role_id" required class="w-full bg-[#FAFAFA] border border-stone-200 px-4 py-2.5 text-xs text-black focus:outline-none focus:border-black focus:ring-0">
+                                @foreach($roles as $role)
+                                    <option value="{{ $role->id }}">
+                                        {{ $role->display_name }} ({{ strtoupper($role->name) }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] uppercase tracking-wider text-stone-500 font-bold mb-2">Membership Tier</label>
+                            <select name="tier" x-model="editUser.tier" class="w-full bg-[#FAFAFA] border border-stone-200 px-4 py-2.5 text-xs text-black focus:outline-none focus:border-black focus:ring-0">
+                                <option value="Reguler">Reguler (0 - 499 Pts)</option>
+                                <option value="Silver">Silver (500 - 999 Pts)</option>
+                                <option value="Gold">Gold (&ge; 1.000 Pts)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] uppercase tracking-wider text-stone-500 font-bold mb-2">Saldo Poin Aktif</label>
+                            <input type="number" name="points" x-model="editUser.points" min="0"
+                                   class="w-full bg-[#FAFAFA] border border-stone-200 px-4 py-2.5 text-xs text-black focus:outline-none focus:border-black focus:ring-0">
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] uppercase tracking-wider text-stone-500 font-bold mb-2">Lifetime Points (Akumulasi)</label>
+                            <input type="number" name="lifetime_points" x-model="editUser.lifetime_points" min="0"
+                                   class="w-full bg-[#FAFAFA] border border-stone-200 px-4 py-2.5 text-xs text-black focus:outline-none focus:border-black focus:ring-0">
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex justify-end gap-3 pt-4 border-t border-stone-100">
+                        <button type="button" @click="showEditModal = false" class="px-5 py-2.5 border border-stone-300 text-[10px] uppercase tracking-wider text-stone-600 hover:text-black">
+                            Batal
+                        </button>
+                        <button type="submit" class="bg-black text-white text-[10px] uppercase tracking-widest font-bold px-8 py-2.5 hover:bg-amber-600 transition shadow">
+                            Simpan Perubahan
                         </button>
                     </div>
                 </form>
@@ -257,9 +363,9 @@
                                     <div class="flex items-center gap-2">
                                         <span class="text-[10px] font-bold px-2 py-0.5 rounded
                                             {{ $user->tier === 'Gold' ? 'bg-amber-100 text-amber-800' : ($user->tier === 'Silver' ? 'bg-stone-200 text-stone-700' : 'bg-stone-100 text-stone-600') }}">
-                                            {{ $user->tier ?? 'Classic' }}
+                                            {{ $user->tier ?? 'Reguler' }}
                                         </span>
-                                        <span class="text-xs font-semibold text-stone-800">{{ number_format($user->points) }} Pts</span>
+                                        <span class="text-xs font-semibold text-stone-800">{{ number_format($user->points) }} Pts <span class="text-[10px] text-stone-400 font-normal">(LT: {{ number_format($user->lifetime_points) }})</span></span>
                                     </div>
                                 </td>
 
@@ -268,19 +374,33 @@
                                     {{ $user->created_at ? $user->created_at->format('d M Y') : '-' }}
                                 </td>
 
-                                <!-- Action (Delete) -->
-                                <td class="py-4 px-6 text-right">
-                                    @if($user->id === auth()->id())
-                                        <span class="text-stone-300 text-xs">-</span>
-                                    @else
-                                        <form method="POST" action="{{ route('admin.users.destroy', $user) }}" onsubmit="return confirm('Apakah Anda yakin ingin menghapus akun pengguna {{ $user->name }}? Tindakan ini tidak dapat dibatalkan.');">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="text-[10px] uppercase tracking-wider text-red-500 hover:text-red-700 font-bold hover:underline">
-                                                Hapus
-                                            </button>
-                                        </form>
-                                    @endif
+                                <!-- Action (Edit & Delete) -->
+                                <td class="py-4 px-6 text-right whitespace-nowrap">
+                                    <div class="flex items-center justify-end gap-3">
+                                        <button type="button" 
+                                            @click="openEdit({
+                                                id: {{ $user->id }},
+                                                name: @js($user->name),
+                                                email: @js($user->email),
+                                                role_id: {{ $user->role_id ?? 'null' }},
+                                                points: {{ (int) $user->points }},
+                                                lifetime_points: {{ (int) $user->lifetime_points }},
+                                                tier: @js($user->tier ?? 'Reguler')
+                                            })"
+                                            class="text-[10px] uppercase tracking-wider text-amber-700 hover:text-black font-bold hover:underline flex items-center gap-1 transition">
+                                            <span>✏</span> Edit
+                                        </button>
+
+                                        @if($user->id !== auth()->id())
+                                            <form method="POST" action="{{ route('admin.users.destroy', $user) }}" onsubmit="return confirm('Apakah Anda yakin ingin menghapus akun pengguna {{ $user->name }}? Tindakan ini tidak dapat dibatalkan.');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="text-[10px] uppercase tracking-wider text-red-500 hover:text-red-700 font-bold hover:underline">
+                                                    Hapus
+                                                </button>
+                                            </form>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                             @empty

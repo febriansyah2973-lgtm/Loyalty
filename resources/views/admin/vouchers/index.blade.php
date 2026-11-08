@@ -134,16 +134,16 @@
                     <!-- TIPE VOUCHER: DARI REWARD ATAU KUSTOM -->
                     <div class="pt-4 border-t border-gray-100">
                         <label class="block text-[10px] tracking-[0.2em] uppercase font-bold text-gray-700 mb-3">
-                            Jenis Hadiah / Diskon Voucher <span class="text-red-500">*</span>
+                            Jenis Hadiah & Benefit Member <span class="text-red-500">*</span>
                         </label>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
                             <label class="border p-4 flex items-center gap-3 cursor-pointer transition"
                                 :class="voucherType === 'template' ? 'border-black bg-stone-50' : 'border-gray-200 hover:border-gray-300'">
                                 <input type="radio" name="voucher_type" value="template" x-model="voucherType" class="text-black focus:ring-0">
                                 <div>
-                                    <p class="text-xs font-bold text-black uppercase tracking-wider">Pilih dari Katalog Reward</p>
-                                    <p class="text-[10px] text-gray-500">Gunakan template reward diskon yang sudah tersedia</p>
+                                    <p class="text-xs font-bold text-black uppercase tracking-wider">Katalog Privilege & Reward Khanaan</p>
+                                    <p class="text-[10px] text-gray-500">Layanan Vermak, Undangan VIP, Hampers, atau Produk Eksklusif</p>
                                 </div>
                             </label>
 
@@ -151,8 +151,8 @@
                                 :class="voucherType === 'custom' ? 'border-black bg-stone-50' : 'border-gray-200 hover:border-gray-300'">
                                 <input type="radio" name="voucher_type" value="custom" x-model="voucherType" class="text-black focus:ring-0">
                                 <div>
-                                    <p class="text-xs font-bold text-black uppercase tracking-wider">Voucher Kustom Khusus</p>
-                                    <p class="text-[10px] text-gray-500">Tentukan judul & nominal diskon kustom secara bebas</p>
+                                    <p class="text-xs font-bold text-black uppercase tracking-wider">Benefit / Privilege Kustom Bebas</p>
+                                    <p class="text-[10px] text-gray-500">Tentukan kategori, judul perlakuan khusus, atau hadiah secara fleksibel</p>
                                 </div>
                             </label>
                         </div>
@@ -161,33 +161,47 @@
                         <div x-show="voucherType === 'template'" class="space-y-4">
                             <div>
                                 <label for="reward_id" class="block text-[10px] tracking-[0.2em] uppercase font-semibold text-gray-600 mb-1">
-                                    Pilih Reward
+                                    Pilih Template Reward / Benefit
                                 </label>
                                 <select name="reward_id" id="reward_id"
                                     class="w-full border-gray-300 focus:border-black focus:ring-0 text-xs py-2.5 px-3 bg-white">
                                     @foreach($rewards as $reward)
                                         <option value="{{ $reward->id }}">
-                                            {{ $reward->title }} (Standar: {{ $reward->points_required }} Poin)
+                                            [{{ $reward->categoryLabel() }}] {{ $reward->title }} — Syarat Tier: {{ $reward->tier_required }} ({{ $reward->points_required }} Poin)
                                         </option>
                                     @endforeach
                                 </select>
+                                <p class="text-[10px] text-gray-400 mt-1">Template mencakup seluruh skema benefit (Layanan Vermak, Undangan VIP, Hampers, dan Produk Eksklusif).</p>
                             </div>
                         </div>
 
                         <!-- OPSI CUSTOM VOUCHER -->
-                        <div x-show="voucherType === 'custom'" class="grid grid-cols-1 md:grid-cols-2 gap-6" style="display:none;">
+                        <div x-show="voucherType === 'custom'" class="grid grid-cols-1 md:grid-cols-3 gap-6" style="display:none;">
+                            <div>
+                                <label for="category" class="block text-[10px] tracking-[0.2em] uppercase font-semibold text-gray-600 mb-1">
+                                    Kategori Benefit <span class="text-red-500">*</span>
+                                </label>
+                                <select name="category" id="category" class="w-full border-gray-300 focus:border-black focus:ring-0 text-xs py-2.5 px-3 bg-white">
+                                    <option value="service">Layanan & Custom / Vermak</option>
+                                    <option value="invitation">Undangan VIP & Acara Privat</option>
+                                    <option value="hampers">Hampers & Bingkisan Spesial</option>
+                                    <option value="product">Produk Eksklusif Runway / Atelier</option>
+                                    <option value="privilege">Privilege Access / Private Sale</option>
+                                    <option value="discount">Voucher Diskon / Potongan Belanja</option>
+                                </select>
+                            </div>
                             <div>
                                 <label for="custom_title" class="block text-[10px] tracking-[0.2em] uppercase font-semibold text-gray-600 mb-1">
-                                    Judul Voucher Kustom
+                                    Judul Voucher / Privilege <span class="text-red-500">*</span>
                                 </label>
                                 <input type="text" name="custom_title" id="custom_title"
                                     value="{{ old('custom_title') }}"
-                                    placeholder="Misal: Voucher Diskon Rp 350.000 (VIP Loyalty)"
+                                    placeholder="Misal: Free Vermak Gaun Pengantin Khusus"
                                     class="w-full border-gray-300 focus:border-black focus:ring-0 text-xs py-2.5 px-3">
                             </div>
                             <div>
                                 <label for="discount_amount" class="block text-[10px] tracking-[0.2em] uppercase font-semibold text-gray-600 mb-1">
-                                    Nominal Diskon (Rp) (Opsional)
+                                    Nominal Diskon (Rp) <span class="text-[9px] text-gray-400 font-normal lowercase">(opsional jika berupa diskon)</span>
                                 </label>
                                 <input type="number" name="discount_amount" id="discount_amount"
                                     value="{{ old('discount_amount') }}"
@@ -282,7 +296,7 @@
                             <tr>
                                 <th class="px-6 py-4">Penerima (Member)</th>
                                 <th class="px-6 py-4">Kode Voucher</th>
-                                <th class="px-6 py-4">Hadiah / Diskon</th>
+                                <th class="px-6 py-4">Benefit / Hadiah</th>
                                 <th class="px-6 py-4">Masa Berlaku</th>
                                 <th class="px-6 py-4">Status</th>
                                 <th class="px-6 py-4 text-right">Aksi</th>
@@ -323,8 +337,13 @@
                                     @endif
                                 </td>
 
-                                <!-- Hadiah / Diskon -->
+                                <!-- Hadiah / Benefit -->
                                 <td class="px-6 py-5">
+                                    <div class="mb-1">
+                                        <span class="inline-block text-[8px] uppercase tracking-wider font-bold px-2 py-0.5 border {{ $voucher->categoryBadgeClass() }}">
+                                            {{ $voucher->categoryLabel() }}
+                                        </span>
+                                    </div>
                                     <p class="font-bold text-stone-900">{{ $voucher->title }}</p>
                                     @if($voucher->discount_amount)
                                         <p class="text-[10px] text-amber-600 font-semibold mt-0.5">Diskon: Rp {{ number_format($voucher->discount_amount, 0, ',', '.') }}</p>

@@ -35,7 +35,8 @@ class UserFactory extends Factory
                 ['display_name' => 'Customer / Member', 'description' => 'Akses portal loyalitas pelanggan']
             )->id,
             'points' => 0,
-            'tier' => 'Classic',
+            'lifetime_points' => 0,
+            'tier' => 'Reguler',
             'points_expire_at' => now()->endOfYear()->toDateString(),
             'cashback_balance' => 0,
             'remember_token' => Str::random(10),

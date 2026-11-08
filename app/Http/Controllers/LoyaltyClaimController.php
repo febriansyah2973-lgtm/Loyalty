@@ -95,7 +95,7 @@ class LoyaltyClaimController extends Controller
             'total_pending'          => LoyaltyClaim::where('status', 'pending')->count(),
             'vip_pending'            => LoyaltyClaim::where('status', 'pending')
                                           ->whereHas('user', function($q) {
-                                              $q->where('points', '>=', 1000); // Silver & Gold Member
+                                              $q->whereIn('tier', ['Silver', 'Gold']);
                                           })->count(),
             'high_risk_pending'      => LoyaltyClaim::where('status', 'pending')->where('fraud_risk_score', '>=', 60)->count(),
             'total_sales_verified'   => LoyaltyClaim::where('status', 'approved')->sum('amount'),
@@ -123,7 +123,8 @@ class LoyaltyClaimController extends Controller
 
     /**
      * Proses persetujuan klaim oleh Admin:
-     * Menambah poin via Point Ledger, cashback, dan mengupdate level/tier pelanggan.
+     * Menghitung poin via Point Calculation Engine (Base Formula * Tier Multiplier),
+     * menginjeksi points & lifetime_points, dan memperbarui tier member.
      */
     public function approve($id)
     {
@@ -141,20 +142,19 @@ class LoyaltyClaimController extends Controller
         $cashback = 0.0;
 
         DB::transaction(function () use ($claim, &$earnedPoints, &$cashback) {
-            // Rumus Konversi: Pembelian Rp 1.000.000 = 10 Poin (Kelipatan Rp 100.000 = 1 Poin)
-            $earnedPoints = (int) floor($claim->amount / 100000);
+            // Point Calculation Engine (Earning Points):
+            // Base Formula: (Transaction Amount / 100,000) * 10
+            // Multiplier Logic (Match on Tier): Reguler 1.0, Silver 1.5, Gold 2.0
+            $earnedPoints = $claim->user->calculateEarnedPoints($claim->amount);
             $cashback = $claim->user->creditCashback($claim->amount);
 
-            // Tambah Poin & Catat ke Point Ledger
+            // Database Injection: Update BOTH points & lifetime_points, and evaluate tier upgrade
             $claim->user->addPoints(
                 $earnedPoints,
                 'earn_claim',
                 "Persetujuan klaim transaksi #{$claim->order_number} (Rp " . number_format($claim->amount, 0, ',', '.') . ")",
                 $claim
             );
-
-            // Update Level / Tier Pelanggan Permanen di Database
-            $claim->user->updateTier();
 
             // Tandai status klaim
             $claim->update(['status' => 'approved']);
@@ -193,8 +193,17 @@ class LoyaltyClaimController extends Controller
             return back()->with('error', 'Hadiah ini sedang habis.');
         }
 
+        // Cek syarat tingkatan tier membership
+        if ($reward->tier_required === 'Gold' && $user->tier !== 'Gold') {
+            return back()->with('error', 'Item ini adalah hak istimewa eksklusif khusus untuk member Gold Tier.');
+        }
+
+        if ($reward->tier_required === 'Silver' && !in_array($user->tier, ['Silver', 'Gold'], true)) {
+            return back()->with('error', 'Item ini adalah hak istimewa eksklusif untuk member Silver dan Gold Tier.');
+        }
+
         DB::transaction(function () use ($user, $reward) {
-            // Potong poin melalui Point Ledger
+            // Potong poin melalui Point Ledger (lifetime_points tetap utuh)
             $user->deductPoints(
                 $reward->points_required,
                 'redeem_voucher',
@@ -209,8 +218,9 @@ class LoyaltyClaimController extends Controller
                 'user_id'    => $user->id,
                 'reward_id'  => $reward->id,
                 'title'      => $reward->title,
+                'category'   => $reward->category ?? 'general',
                 'code'       => 'KHN-' . strtoupper(Str::random(8)),
-                'expires_at' => now()->addDays(7), // Urgency: Masa berlaku voucher
+                'expires_at' => now()->addDays(14), // Masa berlaku voucher
             ]);
         });
 

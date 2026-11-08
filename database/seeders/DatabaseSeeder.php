@@ -34,7 +34,8 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('password'),
                 'role_id' => $managerRole->id,
                 'points' => 0,
-                'tier' => 'Classic',
+                'lifetime_points' => 0,
+                'tier' => 'Reguler',
                 'points_expire_at' => now()->endOfYear()->toDateString(),
                 'cashback_balance' => 0,
                 'birth_date' => null,
@@ -44,14 +45,15 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // 2. Demo Member (Silver Tier)
+        // 2. Demo Member (Silver Tier: 500 - 999 lifetime points)
         $member = User::updateOrCreate(
             ['email' => 'member@example.com'],
             [
                 'name' => 'Demo Member',
                 'password' => Hash::make('password'),
                 'role_id' => $customerRole->id,
-                'points' => 1750,
+                'points' => 750,
+                'lifetime_points' => 750,
                 'tier' => 'Silver',
                 'points_expire_at' => now()->endOfYear()->toDateString(),
                 'cashback_balance' => 35.50,
@@ -66,15 +68,15 @@ class DatabaseSeeder extends Seeder
         if ($member->pointLedgers()->count() === 0) {
             $member->pointLedgers()->create([
                 'type' => 'earn_claim',
-                'amount' => 1750,
+                'amount' => 750,
                 'balance_before' => 0,
-                'balance_after' => 1750,
+                'balance_after' => 750,
                 'description' => 'Saldo awal perolehan poin transaksi',
                 'created_at' => now()->subDays(5),
             ]);
         }
 
-        // 3. Test User (Classic Tier)
+        // 3. Test User (Reguler Tier: 0 - 499 lifetime points)
         $testUser = User::updateOrCreate(
             ['email' => 'test@example.com'],
             [
@@ -82,7 +84,8 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('password'),
                 'role_id' => $customerRole->id,
                 'points' => 300,
-                'tier' => 'Classic',
+                'lifetime_points' => 300,
+                'tier' => 'Reguler',
                 'points_expire_at' => now()->endOfYear()->toDateString(),
                 'cashback_balance' => 5.00,
                 'birth_date' => null,
